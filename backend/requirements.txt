@@ -6,3 +6,18 @@ google-genai
 python-multipart==0.0.12
 pydantic==2.9.0
 python-dotenv==1.0.1
+
+# Authentication
+pymongo[srv]==4.6.0
+bcrypt==4.1.2
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+email-validator==2.1.0
+
+# LangChain for ReAct Agent
+langchain>=0.3.0
+langchain-google-genai>=2.0.0
+langchain-core>=0.3.0
+
+# ChromaDB for RAG
+chromadb>=0.4.0

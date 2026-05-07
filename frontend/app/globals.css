@@ -2,15 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
+/* EXACT PORTFOLIO FONTS - Same as portfolio project */
 @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Product+Sans:wght@400;700&display=swap');
 
 :root {
+  /* Google 4-Color Palette - EXACT from portfolio */
   --google-blue: #4285f4;
   --google-red: #ea4335;
   --google-yellow: #fbbc04;
   --google-green: #34a853;
+  
+  /* Text Colors - EXACT from portfolio */
   --text-primary: #202124;
   --text-secondary: #5f6368;
+  
+  /* Background Colors - EXACT from portfolio */
   --bg-white: #ffffff;
   --bg-light: #f8f9fa;
   --border-light: #dadce0;
@@ -23,17 +29,22 @@
 }
 
 body {
+  /* EXACT portfolio font stack */
   font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: var(--bg-white);
   color: var(--text-primary);
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 h1, h2, h3, h4, h5, h6 {
+  /* EXACT portfolio heading font */
   font-family: 'Product Sans', 'Google Sans', sans-serif;
+  font-weight: 700;
 }
 
-/* Google Loading Screen */
+/* Google Loading Screen - EXACT from portfolio */
 .loading-screen {
   position: fixed;
   top: 0;
@@ -97,7 +108,7 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
-/* Mesh Background */
+/* Mesh Background - EXACT from portfolio */
 .mesh-bg {
   position: fixed;
   top: 0;
@@ -164,7 +175,7 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
-/* Google Buttons */
+/* Google Buttons - EXACT from portfolio */
 .btn-google {
   padding: 12px 32px;
   font-family: 'Google Sans', sans-serif;
@@ -205,7 +216,7 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: 0 1px 6px rgba(0,0,0,0.12);
 }
 
-/* Google Card */
+/* Google Card - EXACT from portfolio */
 .card-google {
   background: white;
   border-radius: 12px;
@@ -219,7 +230,7 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: 0 8px 24px rgba(0,0,0,0.12);
 }
 
-/* Google Input */
+/* Google Input - EXACT from portfolio */
 .input-google {
   width: 100%;
   padding: 12px 16px;
@@ -330,7 +341,7 @@ h1, h2, h3, h4, h5, h6 {
   100% { transform: translateX(100%); }
 }
 
-/* Stat Cards */
+/* Stat Cards - EXACT from portfolio */
 .stat-card {
   background: var(--bg-white);
   padding: 24px;
@@ -375,7 +386,7 @@ h1, h2, h3, h4, h5, h6 {
   animation: bounce-slow 2s ease-in-out infinite;
 }
 
-/* Fade Slide Animation */
+/* Fade Slide Animation - EXACT from portfolio */
 @keyframes fadeSlideUp {
   from {
     opacity: 0;
@@ -408,4 +419,32 @@ h1, h2, h3, h4, h5, h6 {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-secondary);
+}
+
+/* Blob Animations for Login/Register Pages */
+@keyframes blob {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+.animate-blob {
+  animation: blob 7s infinite;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
 }

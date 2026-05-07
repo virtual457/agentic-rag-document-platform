@@ -2,7 +2,7 @@
 Generator - Creates resume JSON from JD and user profile
 """
 import json
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -13,30 +13,54 @@ from aro.llm_adapter import LLMAdapter
 class Generator:
     def __init__(self, llm: LLMAdapter):
         self.llm = llm
-    
-    def generate(self, jd_text: str, user_profile: Dict[str, Any], company: str, role: str) -> Dict[str, Any]:
+
+    def generate(
+        self,
+        jd_text: str,
+        user_profile: Dict[str, Any],
+        company: str,
+        role: str,
+        rag_context: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Generate resume JSON from JD and user profile
-        
+
         Args:
             jd_text: Job description
             user_profile: User data dict
             company: Company name
             role: Role title
-        
+            rag_context: Optional RAG-retrieved project context for enhanced generation
+
         Returns:
             Resume JSON with summary, skills, experience, projects
         """
-        prompt = self._build_prompt(jd_text, user_profile, company, role)
-        resume_json = self.llm.generate_json(prompt, max_tokens=8000)
+        prompt = self._build_prompt(jd_text, user_profile, company, role, rag_context)
+        resume_json = self.llm.generate_json(prompt, max_tokens=8000, task="generation")
         return resume_json
     
-    def _build_prompt(self, jd_text: str, user_profile: Dict[str, Any], company: str, role: str) -> str:
+    def _build_prompt(
+        self,
+        jd_text: str,
+        user_profile: Dict[str, Any],
+        company: str,
+        role: str,
+        rag_context: Optional[str] = None
+    ) -> str:
         """Build generation prompt for LLM"""
-        
+
         # Convert profile to simple string for prompt
         profile_str = json.dumps(user_profile, indent=2)
-        
+
+        # Build prompt with optional RAG context
+        rag_section = ""
+        if rag_context:
+            rag_section = f"""
+RELEVANT PROJECTS FROM GITHUB (Use this to enhance experience bullets with specific details):
+{rag_context}
+
+"""
+
         prompt = f"""You are an expert resume writer. Generate a tailored resume JSON for this role.
 
 ROLE: {role} at {company}
@@ -46,7 +70,7 @@ JOB DESCRIPTION:
 
 USER PROFILE:
 {profile_str}
-
+{rag_section}
 INSTRUCTIONS:
 1. Summary: 520-570 characters with **bold** markers
 2. Skills: Exactly 7 categories, 70-95 characters each

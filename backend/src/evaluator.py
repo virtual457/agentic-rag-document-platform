@@ -143,5 +143,6 @@ Return ONLY this JSON:
             print("="*60 + "\n")
         
         # Increased to 6000 for detailed feedback
-        result = self.llm.generate_json(prompt, max_tokens=6000)
+        # Use fast model (flash-lite) for scoring - 10 RPM vs 5 RPM!
+        result = self.llm.generate_json(prompt, max_tokens=6000, task="evaluation")
         return result

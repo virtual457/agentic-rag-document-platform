@@ -46,7 +46,8 @@ class Reviser:
             print("="*60 + "\n")
         
         # Needs tokens for large profile + revised resume output
-        revised_resume = self.llm.generate_json(prompt, max_tokens=10000)
+        # Use high-quality model for strategic improvement
+        revised_resume = self.llm.generate_json(prompt, max_tokens=10000, task="revision")
         return revised_resume
     
     def _build_prompt(

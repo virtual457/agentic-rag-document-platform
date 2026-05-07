@@ -1,5 +1,5 @@
 """
-LLM Adapter - Google Gemini using NEW SDK
+LLM Adapter - Google Gemini using NEW SDK with Smart Model Routing
 """
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional
@@ -7,18 +7,33 @@ import os
 import json
 import time
 
+from .model_config import ModelConfig
+
 
 class LLMAdapter(ABC):
     """Abstract base class for LLM providers"""
     
     @abstractmethod
-    def generate(self, prompt: str, max_tokens: int = 4000, temperature: float = 0.7) -> str:
-        """Generate text from prompt"""
+    def generate(self, prompt: str, max_tokens: int = 4000, temperature: float = 0.7, task: str = "general") -> str:
+        """Generate text from prompt
+        
+        Args:
+            prompt: Input prompt
+            max_tokens: Maximum tokens to generate
+            temperature: Sampling temperature
+            task: Task type for model selection ('generation', 'evaluation', etc.)
+        """
         pass
     
     @abstractmethod
-    def generate_json(self, prompt: str, max_tokens: int = 4000) -> Dict[str, Any]:
-        """Generate structured JSON from prompt"""
+    def generate_json(self, prompt: str, max_tokens: int = 4000, task: str = "general") -> Dict[str, Any]:
+        """Generate structured JSON from prompt
+        
+        Args:
+            prompt: Input prompt
+            max_tokens: Maximum tokens to generate
+            task: Task type for model selection
+        """
         pass
 
 
@@ -41,8 +56,11 @@ class GeminiAdapter(LLMAdapter):
         self.client = genai.Client(api_key=self.api_key)
         self.types = types
     
-    def generate(self, prompt: str, max_tokens: int = 4000, temperature: float = 0.7) -> str:
-        """Generate text using Gemini with retry logic"""
+    def generate(self, prompt: str, max_tokens: int = 4000, temperature: float = 0.7, task: str = "general") -> str:
+        """Generate text using Gemini with retry logic and smart model routing"""
+        
+        # Select model based on task
+        model = ModelConfig.get_model(task)
         
         # Add token limit instruction to prompt
         prompt_with_limit = f"{prompt}\n\nIMPORTANT: Keep response under {max_tokens} tokens."
@@ -54,7 +72,7 @@ class GeminiAdapter(LLMAdapter):
         for attempt in range(max_retries):
             try:
                 response = self.client.models.generate_content(
-                    model='gemini-2.5-flash',
+                    model=model,  # Smart routing based on task
                     contents=prompt_with_limit,
                     config=self.types.GenerateContentConfig(
                         temperature=temperature,
@@ -102,13 +120,13 @@ class GeminiAdapter(LLMAdapter):
         
         raise Exception(f"Failed after {max_retries} attempts: {last_error}")
     
-    def generate_json(self, prompt: str, max_tokens: int = 4000) -> Dict[str, Any]:
-        """Generate JSON using Gemini"""
+    def generate_json(self, prompt: str, max_tokens: int = 4000, task: str = "general") -> Dict[str, Any]:
+        """Generate JSON using Gemini with smart model routing"""
         
         json_prompt = f"{prompt}\n\nReturn ONLY valid JSON, no markdown, no explanation. Keep under {max_tokens} tokens."
         
         try:
-            response = self.generate(json_prompt, max_tokens, temperature=0)
+            response = self.generate(json_prompt, max_tokens, temperature=0, task=task)
             
             if not response:
                 raise Exception("Empty response from generate()")

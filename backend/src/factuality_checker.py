@@ -48,7 +48,8 @@ class FactualityChecker:
             print("="*60 + "\n")
         
         # Needs ~10000 tokens for large profile + detailed output
-        result = self.llm.generate_json(prompt, max_tokens=10000)
+        # Use standard flash model for critical verification
+        result = self.llm.generate_json(prompt, max_tokens=10000, task="factuality")
         return result
     
     def _build_prompt(self, resume_json: Dict[str, Any], user_profile: Dict[str, Any]) -> str:

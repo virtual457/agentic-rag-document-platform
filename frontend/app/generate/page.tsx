@@ -1,11 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '@/contexts/AuthContext'
 import { GenerationModal } from '@/components/GenerationModal'
 
 export default function GeneratePage() {
   const router = useRouter()
+  const { user, token, isAuthenticated, isLoading } = useAuth()
   const [jdText, setJdText] = useState('')
   const [company, setCompany] = useState('')
   const [role, setRole] = useState('')
@@ -13,9 +15,37 @@ export default function GeneratePage() {
   const [currentStage, setCurrentStage] = useState('')
   const [currentMessage, setCurrentMessage] = useState('')
   const [progress, setProgress] = useState(0)
+  const [profileCompletion, setProfileCompletion] = useState<number | null>(null)
+  const [showWarning, setShowWarning] = useState(false)
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push('/login')
+    } else if (token) {
+      checkProfileCompletion()
+    }
+  }, [isAuthenticated, isLoading, token, router])
+
+  const checkProfileCompletion = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/api/profile/completion', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      const data = await response.json()
+      setProfileCompletion(data.percentage)
+    } catch (error) {
+      console.error(error)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Check profile completion
+    if (profileCompletion !== null && profileCompletion < 70) {
+      setShowWarning(true)
+      return
+    }
     
     if (!jdText.trim() || !company.trim() || !role.trim()) {
       alert('Please fill in all fields')
@@ -157,13 +187,10 @@ Requirements:
               }}
             >
               <h1 style={{ 
-                fontFamily: 'Product Sans, sans-serif', 
+                fontFamily: "'Product Sans', sans-serif", 
                 fontSize: '1.75rem', 
                 fontWeight: 700,
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text'
+                color: 'var(--text-primary)'
               }}>
                 LMARO
               </h1>
@@ -318,6 +345,50 @@ Requirements:
           </div>
         </div>
       </main>
+
+      {/* Profile Completion Warning Modal */}
+      {showWarning && (
+        <div onClick={() => setShowWarning(false)} style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div onClick={(e) => e.stopPropagation()} style={{
+            background: 'white',
+            borderRadius: '8px',
+            padding: '32px',
+            maxWidth: '500px',
+            margin: '20px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', marginBottom: '20px' }}>
+              <div style={{ width: '48px', height: '48px', background: '#ea4335', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <span className="material-icons" style={{ color: 'white', fontSize: '28px' }}>warning</span>
+              </div>
+              <div>
+                <h3 style={{ fontFamily: "'Product Sans', sans-serif", fontSize: '20px', marginBottom: '8px', color: 'var(--text-primary)' }}>
+                  Profile Incomplete
+                </h3>
+                <p style={{ fontFamily: "'Google Sans', sans-serif", fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                  Your profile is only {profileCompletion}% complete. We need at least 70% to generate quality resumes.
+                </p>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button onClick={() => setShowWarning(false)} style={{ padding: '9px 24px', background: 'white', color: 'var(--text-secondary)', border: '1px solid var(--border-light)', borderRadius: '4px', fontFamily: "'Google Sans', sans-serif", fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button onClick={() => router.push('/profile')} style={{ padding: '9px 24px', background: '#4285f4', color: 'white', border: 'none', borderRadius: '4px', fontFamily: "'Google Sans', sans-serif", fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}>
+                Update Profile
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
