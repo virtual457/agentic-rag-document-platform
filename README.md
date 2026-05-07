@@ -16,7 +16,7 @@
     <br/><br/>
     <a href="#getting-started">Quick Start</a>
     ·
-    <a href="https://github.com/virtual457/llm-multi-agent-resume-optimizer/issues">Report Bug</a>
+    <a href="https://github.com/virtual457/agentic-rag-document-platform/issues">Report Bug</a>
     ·
     <a href="#features">View Features</a>
   </p>
@@ -269,8 +269,8 @@ Retrieval evaluation is tracked separately from generation evaluation:
 ### Installation
 
 ```bash
-git clone https://github.com/virtual457/llm-multi-agent-resume-optimizer.git
-cd llm-multi-agent-resume-optimizer
+git clone https://github.com/virtual457/agentic-rag-document-platform.git
+cd agentic-rag-document-platform
 cd backend
 
 python -m venv venv
@@ -326,7 +326,7 @@ aws s3 cp ./samples/payment-runbook.pdf s3://rag-doc-ingest/runbooks/
 ## Project Structure
 
 ```
-llm-multi-agent-resume-optimizer/
+agentic-rag-document-platform/
 │
 ├── backend/
 │   ├── main.py                          # FastAPI app entry point
@@ -420,18 +420,18 @@ llm-multi-agent-resume-optimizer/
 - [GitHub @virtual457](https://github.com/virtual457)
 - [Portfolio](https://virtual457.github.io)
 
-**Project Link**: [github.com/virtual457/llm-multi-agent-resume-optimizer](https://github.com/virtual457/llm-multi-agent-resume-optimizer)
+**Project Link**: [github.com/virtual457/agentic-rag-document-platform](https://github.com/virtual457/agentic-rag-document-platform)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- MARKDOWN LINKS -->
-[contributors-shield]: https://img.shields.io/github/contributors/virtual457/llm-multi-agent-resume-optimizer.svg?style=for-the-badge
-[forks-shield]: https://img.shields.io/github/forks/virtual457/llm-multi-agent-resume-optimizer.svg?style=for-the-badge
-[stars-shield]: https://img.shields.io/github/stars/virtual457/llm-multi-agent-resume-optimizer.svg?style=for-the-badge
-[issues-shield]: https://img.shields.io/github/issues/virtual457/llm-multi-agent-resume-optimizer.svg?style=for-the-badge
-[license-shield]: https://img.shields.io/github/license/virtual457/llm-multi-agent-resume-optimizer.svg?style=for-the-badge
-[contributors-url]: https://github.com/virtual457/llm-multi-agent-resume-optimizer/graphs/contributors
-[forks-url]: https://github.com/virtual457/llm-multi-agent-resume-optimizer/network/members
-[stars-url]: https://github.com/virtual457/llm-multi-agent-resume-optimizer/stargazers
-[issues-url]: https://github.com/virtual457/llm-multi-agent-resume-optimizer/issues
-[license-url]: https://github.com/virtual457/llm-multi-agent-resume-optimizer/blob/master/LICENSE
+[contributors-shield]: https://img.shields.io/github/contributors/virtual457/agentic-rag-document-platform.svg?style=for-the-badge
+[forks-shield]: https://img.shields.io/github/forks/virtual457/agentic-rag-document-platform.svg?style=for-the-badge
+[stars-shield]: https://img.shields.io/github/stars/virtual457/agentic-rag-document-platform.svg?style=for-the-badge
+[issues-shield]: https://img.shields.io/github/issues/virtual457/agentic-rag-document-platform.svg?style=for-the-badge
+[license-shield]: https://img.shields.io/github/license/virtual457/agentic-rag-document-platform.svg?style=for-the-badge
+[contributors-url]: https://github.com/virtual457/agentic-rag-document-platform/graphs/contributors
+[forks-url]: https://github.com/virtual457/agentic-rag-document-platform/network/members
+[stars-url]: https://github.com/virtual457/agentic-rag-document-platform/stargazers
+[issues-url]: https://github.com/virtual457/agentic-rag-document-platform/issues
+[license-url]: https://github.com/virtual457/agentic-rag-document-platform/blob/master/LICENSE
