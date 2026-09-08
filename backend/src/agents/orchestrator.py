@@ -74,18 +74,31 @@ def get_graph():
     return _GRAPH
 
 
+async def _load_prior_prompt(tenant: str, conversation_id: str | None) -> str:
+    if not conversation_id:
+        return ""
+    from src.metadata_store.conversations import format_prior_turns, load_recent_turns
+
+    turns = await load_recent_turns(tenant=tenant, conversation_id=conversation_id)
+    return format_prior_turns(turns)
+
+
 async def run_orchestrator(
     *,
     tenant: str,
     query: str,
+    conversation_id: str | None = None,
     granted_scopes: list[str] | None = None,
     metadata_filter: dict[str, Any] | None = None,
     trigger_actions: bool = False,
 ) -> AgentState:
     graph = get_graph()
+    prior_prompt = await _load_prior_prompt(tenant, conversation_id)
     state: AgentState = {
         "tenant": tenant,
         "query": query,
+        "conversation_id": conversation_id,
+        "prior_turns_prompt": prior_prompt,
         "granted_scopes": granted_scopes or ["default"],
         "metadata_filter": metadata_filter,
         "trigger_actions": trigger_actions,
@@ -102,14 +115,18 @@ async def stream_orchestrator(
     *,
     tenant: str,
     query: str,
+    conversation_id: str | None = None,
     granted_scopes: list[str] | None = None,
     metadata_filter: dict[str, Any] | None = None,
     trigger_actions: bool = False,
 ) -> AsyncIterator[dict]:
     graph = get_graph()
+    prior_prompt = await _load_prior_prompt(tenant, conversation_id)
     state: AgentState = {
         "tenant": tenant,
         "query": query,
+        "conversation_id": conversation_id,
+        "prior_turns_prompt": prior_prompt,
         "granted_scopes": granted_scopes or ["default"],
         "metadata_filter": metadata_filter,
         "trigger_actions": trigger_actions,

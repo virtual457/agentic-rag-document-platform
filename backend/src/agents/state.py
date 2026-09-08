@@ -8,6 +8,8 @@ Route = Literal["qa", "action", "unclear"]
 class AgentState(TypedDict, total=False):
     tenant: str
     query: str
+    conversation_id: str | None
+    prior_turns_prompt: str
     granted_scopes: list[str]
     metadata_filter: dict[str, Any] | None
     trigger_actions: bool

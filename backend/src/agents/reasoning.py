@@ -38,7 +38,13 @@ async def reasoning_node(state: AgentState) -> AgentState:
 
         search_tool = make_rag_search_tool(state["tenant"], state.get("granted_scopes") or ["default"], state.get("metadata_filter"))
         context = await search_tool.arun({"query": state["query"], "top_k": 5})
-        answer = await llm_provider.chat(f"{_SYSTEM}\n\nContext:\n{context}\n\nQuestion:\n{state['query']}")
+        prior = (state.get("prior_turns_prompt") or "").strip()
+        parts = [_SYSTEM]
+        if prior:
+            parts.append(prior)
+        parts.append(f"Context:\n{context}")
+        parts.append(f"Question:\n{state['query']}")
+        answer = await llm_provider.chat("\n\n".join(parts))
         return {
             "draft_answer": answer,
             "citations": [],
@@ -46,7 +52,9 @@ async def reasoning_node(state: AgentState) -> AgentState:
             "events": state.get("events", []) + [{"type": "generation_complete", "label": "Reasoning... draft answer generated"}],
         }
 
-    agent = create_react_agent(model=model, tools=tools, prompt=_SYSTEM)
+    prior = (state.get("prior_turns_prompt") or "").strip()
+    system_prompt = f"{_SYSTEM}\n\n{prior}" if prior else _SYSTEM
+    agent = create_react_agent(model=model, tools=tools, prompt=system_prompt)
     result = await agent.ainvoke({"messages": [HumanMessage(content=state["query"])]})
     messages = result.get("messages", [])
     final = messages[-1] if messages else None
