@@ -14,7 +14,12 @@ class MongoMetadataStore:
 
     def __init__(self) -> None:
         settings = get_settings()
-        self._client = AsyncIOMotorClient(settings.mongo_uri, uuidRepresentation="standard")
+        self._client = AsyncIOMotorClient(
+            settings.mongo_uri,
+            uuidRepresentation="standard",
+            serverSelectionTimeoutMS=2000,
+            connectTimeoutMS=2000,
+        )
         self._db = self._client[settings.mongo_db]
 
     async def ensure_indexes(self) -> None:

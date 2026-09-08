@@ -3,7 +3,7 @@ from __future__ import annotations
 import ast
 import operator
 
-from langchain.tools import StructuredTool
+from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
 _OPS = {

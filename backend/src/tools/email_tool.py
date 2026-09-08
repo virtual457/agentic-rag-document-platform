@@ -4,7 +4,7 @@ import asyncio
 import smtplib
 from email.message import EmailMessage
 
-from langchain.tools import StructuredTool
+from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, EmailStr, Field
 
 from src.config import get_settings

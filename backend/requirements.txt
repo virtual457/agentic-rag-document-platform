@@ -14,6 +14,7 @@ email-validator==2.1.0
 
 # LLM providers
 google-genai
+google-generativeai>=0.8.0
 langchain>=0.3.0
 langchain-core>=0.3.0
 langchain-google-genai>=2.0.0

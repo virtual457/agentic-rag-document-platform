@@ -30,9 +30,11 @@ async def lifespan(app: FastAPI):
     )
     try:
         if settings.metadata_backend == "mongo":
+            import asyncio
+
             from src.metadata_store.mongo import MongoMetadataStore
 
-            await MongoMetadataStore().ensure_indexes()
+            await asyncio.wait_for(MongoMetadataStore().ensure_indexes(), timeout=3.0)
     except Exception as e:
         log.warning("app.index_init_failed", error=str(e))
     session_registry.start()
