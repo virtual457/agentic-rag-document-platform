@@ -3,8 +3,9 @@ import './globals.css'
 import { AuthProvider } from '@/contexts/AuthContext'
 
 export const metadata: Metadata = {
-  title: 'LMARO - AI Resume Optimizer',
-  description: 'Generate optimized resumes tailored to job descriptions using AI',
+  title: 'Document Intelligence Platform',
+  description:
+    'Agentic RAG platform for enterprise document Q&A with multi-agent orchestration and action tools.',
 }
 
 export default function RootLayout({
@@ -14,13 +15,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <head>
-        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
-      </head>
       <body>
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   )

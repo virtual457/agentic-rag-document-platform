@@ -104,7 +104,8 @@ async def get_current_user_info(current_user: UserInDB = Depends(get_current_act
         email=current_user.email,
         full_name=current_user.full_name,
         created_at=current_user.created_at,
-        is_active=current_user.is_active
+        is_active=current_user.is_active,
+        scopes=current_user.scopes,
     )
 
 
