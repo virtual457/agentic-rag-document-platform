@@ -68,5 +68,13 @@ async def evaluator_node(state: AgentState) -> AgentState:
     return {
         "eval_rounds": state.get("eval_rounds", []) + [r],
         "final_score": max(state.get("final_score", 0.0), total),
-        "events": state.get("events", []) + [{"type": "eval_round", "round": round_no, "score": total, "passed": r["passed"]}],
+        "events": state.get("events", []) + [
+            {
+                "type": "eval_round",
+                "round": round_no,
+                "score": total,
+                "passed": r["passed"],
+                "label": f"Evaluation round {round_no}: {total}/100 ({'passed gate' if r['passed'] else 'below gate, will retry'})",
+            }
+        ],
     }

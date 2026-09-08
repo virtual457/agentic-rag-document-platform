@@ -49,5 +49,13 @@ async def validation_node(state: AgentState) -> AgentState:
     return {
         "validation": validation,
         "validation_passes": state.get("validation_passes", 0) + (1 if passed else 0),
-        "events": state.get("events", []) + [{"type": "validation_complete", "passed": passed}],
+        "events": state.get("events", []) + [
+            {
+                "type": "validation_complete",
+                "passed": passed,
+                "supported": supported,
+                "unsupported": len(unsupported),
+                "label": f"Validating claims... {supported} supported, {len(unsupported)} unsupported ({'grounded' if passed else 'gaps found'})",
+            }
+        ],
     }

@@ -19,12 +19,18 @@ Guidance:
 
 async def action_node(state: AgentState) -> AgentState:
     if not state.get("trigger_actions"):
-        return {"actions_taken": [], "events": state.get("events", []) + [{"type": "action_skipped"}]}
+        return {
+            "actions_taken": [],
+            "events": state.get("events", []) + [{"type": "action_skipped", "label": "No side effects requested"}],
+        }
 
     tools = build_action_tools(tenant=state["tenant"])
     llm_provider = get_llm()
     if not hasattr(llm_provider, "raw_langchain"):
-        return {"actions_taken": [], "events": state.get("events", []) + [{"type": "action_skipped", "reason": "llm_not_langchain"}]}
+        return {
+            "actions_taken": [],
+            "events": state.get("events", []) + [{"type": "action_skipped", "reason": "llm_not_langchain", "label": "Skipping actions (LLM backend does not support tool-use)"}],
+        }
     model = llm_provider.raw_langchain(temperature=0.1)
     agent = create_react_agent(model=model, tools=tools, prompt=_SYSTEM)
     combined_query = (
@@ -41,5 +47,7 @@ async def action_node(state: AgentState) -> AgentState:
             actions.append({"tool": tc.get("name"), "args": tc.get("args")})
     return {
         "actions_taken": actions,
-        "events": state.get("events", []) + [{"type": "actions_completed", "count": len(actions)}],
+        "events": state.get("events", []) + [
+            {"type": "actions_completed", "count": len(actions), "label": f"Actions completed ({len(actions)} tool calls, audit log written)"}
+        ],
     }

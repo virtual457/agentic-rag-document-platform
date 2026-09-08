@@ -43,7 +43,7 @@ async def reasoning_node(state: AgentState) -> AgentState:
             "draft_answer": answer,
             "citations": [],
             "reasoning_trace": ["bedrock-direct"],
-            "events": state.get("events", []) + [{"type": "generation_complete"}],
+            "events": state.get("events", []) + [{"type": "generation_complete", "label": "Reasoning... draft answer generated"}],
         }
 
     agent = create_react_agent(model=model, tools=tools, prompt=_SYSTEM)
@@ -56,5 +56,7 @@ async def reasoning_node(state: AgentState) -> AgentState:
         "draft_answer": answer,
         "citations": citations,
         "reasoning_trace": trace,
-        "events": state.get("events", []) + [{"type": "generation_complete", "trace_len": len(trace)}],
+        "events": state.get("events", []) + [
+            {"type": "generation_complete", "trace_len": len(trace), "label": f"Reasoning complete ({len(trace)} steps)"}
+        ],
     }

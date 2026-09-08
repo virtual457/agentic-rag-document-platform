@@ -19,31 +19,31 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expiry_minutes: int = 1440
 
-    # Metadata store
-    metadata_backend: str = "mongo"          # mongo | dynamodb
-    mongo_uri: str = "mongodb://localhost:27017"
-    mongo_db: str = "docintel"
+    # Metadata store — production default: DynamoDB
+    metadata_backend: str = "dynamodb"       # dynamodb | mongo
     dynamodb_table_metadata: str = "docintel-metadata"
     dynamodb_table_sessions: str = "docintel-sessions"
+    mongo_uri: str = "mongodb://localhost:27017"
+    mongo_db: str = "docintel"
 
-    # Vector store
-    vector_backend: str = "chroma"           # chroma | opensearch | pgvector
-    chroma_path: str = "./chromadb_store"
+    # Vector store — production default: OpenSearch Serverless
+    vector_backend: str = "opensearch"       # opensearch | chroma | pgvector
     opensearch_endpoint: str = ""
     opensearch_index: str = "docintel-vectors"
+    chroma_path: str = "./chromadb_store"
     pgvector_dsn: str = "postgresql://user:pass@localhost:5432/docintel"
 
-    # LLM
-    llm_backend: str = "gemini"              # gemini | bedrock
-    gemini_api_key: str = ""
-    gemini_model: str = "gemini-2.5-flash"
+    # LLM — production default: AWS Bedrock LLaMA 3
+    llm_backend: str = "bedrock"             # bedrock | gemini
     bedrock_model_id: str = "meta.llama3-70b-instruct-v1:0"
     bedrock_region: str = "us-east-1"
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-2.5-flash"
 
-    # Embeddings
-    embeddings_backend: str = "gemini"       # gemini | titan | sentence_transformers
-    gemini_embedding_model: str = "text-embedding-004"
+    # Embeddings — production default: AWS Titan
+    embeddings_backend: str = "titan"        # titan | gemini | sentence_transformers
     titan_model_id: str = "amazon.titan-embed-text-v1"
+    gemini_embedding_model: str = "text-embedding-004"
     sentence_transformer_model: str = "all-MiniLM-L6-v2"
 
     # Ingestion
@@ -65,8 +65,8 @@ class Settings(BaseSettings):
     session_timeout_seconds: int = 300
     question_timeout_seconds: int = 60
 
-    # Caching
-    cache_backend: str = "memory"            # memory | redis
+    # Caching — production default: Redis
+    cache_backend: str = "redis"             # redis | memory
     redis_url: str = "redis://localhost:6379/0"
     cache_ttl_embedding: int = 86400
     cache_ttl_retrieval: int = 300

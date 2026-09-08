@@ -66,13 +66,21 @@ async def ingest_bytes(
     }
 
 
-async def ingest_url(*, tenant: str, url: str, title: str | None = None) -> dict[str, Any]:
+async def ingest_url(
+    *,
+    tenant: str,
+    url: str,
+    title: str | None = None,
+    extra_metadata: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     async with httpx.AsyncClient(follow_redirects=True, timeout=30.0) as client:
         resp = await client.get(url)
         resp.raise_for_status()
+    meta = {"source_url": url, **(extra_metadata or {})}
     return await ingest_bytes(
         tenant=tenant,
         filename=title or url.rsplit("/", 1)[-1] or "url-import",
         data=resp.content,
         content_type=resp.headers.get("content-type"),
+        extra_metadata=meta,
     )

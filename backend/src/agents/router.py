@@ -34,4 +34,8 @@ async def router_node(state: AgentState) -> AgentState:
             rationale = data.get("rationale", "")
         except Exception:
             pass
-    return {"route": route, "router_rationale": rationale, "events": state.get("events", []) + [{"type": "route_decided", "route": route}]}
+    return {
+        "route": route,
+        "router_rationale": rationale,
+        "events": state.get("events", []) + [{"type": "route_decided", "route": route, "label": f"Routing query as {route}..."}],
+    }

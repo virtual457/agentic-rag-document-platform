@@ -35,5 +35,7 @@ async def retrieval_node(state: AgentState) -> AgentState:
     return {
         "retrieved": retrieved,
         "context": context,
-        "events": state.get("events", []) + [{"type": "retrieval_complete", "hits": len(retrieved)}],
+        "events": state.get("events", []) + [
+            {"type": "retrieval_complete", "hits": len(retrieved), "label": f"Searching documents... found {len(retrieved)} relevant chunks"}
+        ],
     }

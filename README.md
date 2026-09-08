@@ -10,21 +10,26 @@
 <div align="center">
   <h3 align="center">Cloud-Native Agentic RAG Document Processing Platform</h3>
   <p align="center">
-    Production-grade RAG and agentic Q&amp;A platform that ingests enterprise documents (PDFs, DOCX, HTML, Markdown, plain-text, log files), retrieves relevant context via hybrid semantic + keyword + metadata search with cross-encoder re-ranking, and returns grounded answers with source citations. A LangGraph five-agent orchestrator (Router, Retrieval, Reasoning, Evaluator, Validation, Action) extends the pipeline with tool-calling into Jira, ServiceNow, Slack, email, HTTP webhooks, and an append-only audit log. Every LLM, embedding, vector store, and metadata store is pluggable at the environment-variable level, so the same code runs on Google Gemini + ChromaDB + MongoDB for local development or AWS Bedrock LLaMA 3 + Titan Embeddings + OpenSearch Serverless + DynamoDB for production.
-    <br/>
+    Production-grade RAG and agentic Q&amp;A platform that ingests enterprise documents (PDFs, DOCX, HTML, Markdown, plain-text, log files), retrieves relevant context via hybrid semantic + keyword + metadata search with cross-encoder re-ranking, and returns grounded answers with source citations. A LangGraph five-agent orchestrator (Router, Retrieval, Reasoning, Evaluator, Validation, Action) extends the pipeline with tool-calling into Jira, ServiceNow, Slack, email, HTTP webhooks, and an append-only audit log.
+    <br/><br/>
+    Ships in two first-class modes, selectable via environment variables:<br/>
+    <strong>Prod mode</strong> — AWS Bedrock LLaMA 3 + Titan Embeddings + OpenSearch Serverless + DynamoDB + Redis, provisioned by Terraform.<br/>
+    <strong>Local mode</strong> — Google Gemini 2.5 Flash + Gemini embeddings + ChromaDB + MongoDB + in-memory cache, runs on a laptop in under a minute.
+    <br/><br/>
     <a href="#architecture"><strong>Explore the Architecture »</strong></a>
     <br/><br/>
     <a href="#getting-started">Quick Start</a>
     ·
     <a href="https://github.com/chandankeelara/agentic-rag-document-platform/issues">Report Bug</a>
     ·
-    <a href="#features">View Features</a>
+    <a href="#roadmap">Roadmap</a>
   </p>
 </div>
 
 ## Table of Contents
 
 - [About](#about-the-project)
+- [Two Modes: Prod and Local](#two-modes-prod-and-local)
 - [Architecture](#architecture)
 - [Agentic Workflow](#agentic-workflow)
 - [Ingestion Pipeline](#ingestion-pipeline)
@@ -41,24 +46,85 @@
 
 ## About The Project
 
-This platform indexes enterprise documents and answers natural-language questions over them with citations. It ships as a FastAPI backend + Next.js frontend that runs locally with **Google Gemini 2.5 Flash + Gemini text-embedding-004 + ChromaDB + MongoDB** in about a minute, and re-deploys to AWS with **Bedrock LLaMA 3 + Titan Embeddings + OpenSearch Serverless + DynamoDB + S3 + SQS + Step Functions + Lambda** by flipping four env vars and running `terraform apply` against the Terraform module in `infra/terraform/`.
+This platform indexes enterprise documents and answers natural-language questions over them with citations. It ships as a FastAPI backend + Next.js frontend that boots into either a fully local mode (Gemini + ChromaDB + MongoDB) for laptop development or a fully AWS-native mode (Bedrock + Titan + OpenSearch Serverless + DynamoDB) for production, with the two chosen by a handful of `*_BACKEND` environment variables. Every provider is behind a Protocol interface (`LLMProvider`, `EmbeddingProvider`, `VectorStore`, `MetadataStore`), so the LangGraph orchestrator, hybrid retriever, and ingestion pipeline are backend-agnostic.
 
 The system is designed for the realistic enterprise mix of content: structured PDFs, semi-structured runbooks and KB articles, unstructured telemetry logs, and Markdown / HTML pages. Each content type uses a chunking strategy tuned for its shape (section-aware for docs, event-based for logs grouped by `trace_id` + timestamp window + severity) and is stored with rich per-chunk metadata so retrieval can be filtered by section, source type, product, service, environment, version, page number, and access scope.
 
 ### Highlights
 
-- **Pluggable LLM**: Google Gemini 2.5 Flash (default) or AWS Bedrock LLaMA 3.
-- **Pluggable embeddings**: Gemini `text-embedding-004` (768-dim), AWS Titan Embeddings (1536-dim), or `sentence-transformers/all-MiniLM-L6-v2` (384-dim, fully local and free).
-- **Pluggable vector store**: ChromaDB (local dev), OpenSearch Serverless (production), or PostgreSQL + pgvector.
-- **Pluggable metadata store**: MongoDB (local) or DynamoDB (AWS).
+- **Two first-class deployment modes**: AWS Bedrock production and fully-local Gemini + ChromaDB dev, sharing 100% of the application code.
 - **LangGraph five-agent orchestration**: Router, Retrieval, Reasoning (ReAct), Evaluator (three rounds vs. 90 / 100 quality gate), Validation (two factuality rounds cross-checking every claim), Action.
-- **Hybrid retrieval**: vector similarity + keyword search (Chroma `$contains`, OpenSearch `match`, pgvector `tsvector`) fused via Reciprocal Rank Fusion, then re-ranked by a `cross-encoder/ms-marco-MiniLM-L-6-v2` cross-encoder.
+- **Hybrid retrieval**: vector similarity + keyword search fused via Reciprocal Rank Fusion, then re-ranked by a `cross-encoder/ms-marco-MiniLM-L-6-v2` cross-encoder.
 - **Tool-calling**: Jira, ServiceNow, Slack, email (SMTP), HTTPS webhooks, audit log. The Action Agent invokes them with structured Pydantic-validated arguments.
-- **Hallucination mitigation**: strict grounding prompts, similarity thresholds, source citations on every answer, three evaluation rounds, and a Validation Agent that flags UNSUPPORTED claims and re-runs generation.
-- **Streaming**: Server-Sent Events for the pipeline run and WebSocket for bidirectional agent Q&A (the ReAct agent can pause mid-loop with `ask_user`, wait up to 60 seconds for a reply, then resume with the user's answer folded into scratchpad state).
+- **Hallucination mitigation**: strict grounding prompts, source citations, three evaluation rounds, and a Validation Agent that flags UNSUPPORTED claims and re-runs generation.
+- **Streaming**: Server-Sent Events with human-readable pipeline labels, plus WebSocket for bidirectional agent Q&A where the ReAct agent can pause mid-loop with `ask_user`, wait up to 60 seconds, then resume with the reply folded into scratchpad state.
 - **Production controls**: timeouts, exponential-backoff retries, DLQs, idempotent ingestion, four-layer caching (query embedding / retrieval / final answer / metadata).
-- **Multi-tenant access control**: per-chunk `access_scope` metadata enforced at retrieval time, KMS-encrypted stores, Secrets Manager wrappers for credentials, per-user vector-store isolation.
+- **Multi-tenant access control**: per-chunk `access_scope` metadata enforced at retrieval time, KMS-encrypted stores, Secrets Manager wrappers for credentials, per-tenant vector-store isolation.
 - **Observability**: `structlog` JSON logs with trace / request / session IDs, CloudWatch metric emitter for retrieval, generation, and tool-call latency and success rate.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## Two Modes: Prod and Local
+
+Both modes share the same application code. Switch between them by editing four env vars.
+
+### Prod mode (AWS-native, default)
+
+| Layer | Provider |
+|---|---|
+| LLM | AWS Bedrock LLaMA 3 (`meta.llama3-70b-instruct-v1:0`) via `langchain_aws.ChatBedrockConverse` |
+| Embeddings | AWS Titan `amazon.titan-embed-text-v1` (1536-dim) |
+| Vector store | OpenSearch Serverless (VECTORSEARCH collection, KMS-encrypted) |
+| Metadata store | DynamoDB (metadata + sessions tables, TTL, on-demand billing) |
+| Cache | Redis |
+| Ingestion event bus | S3 → SQS + DLQ → Step Functions → Lambda |
+| Secrets | AWS Secrets Manager (encrypted with a per-project KMS key) |
+| Observability | CloudWatch structured JSON logs + `PutMetricData` |
+| IaC | Terraform in `infra/terraform/` (KMS, S3, SQS, DynamoDB, OpenSearch, Secrets Manager, IAM, Lambda, Step Functions, API Gateway v2) |
+
+```env
+LLM_BACKEND=bedrock
+EMBEDDINGS_BACKEND=titan
+VECTOR_BACKEND=opensearch
+METADATA_BACKEND=dynamodb
+CACHE_BACKEND=redis
+
+BEDROCK_MODEL_ID=meta.llama3-70b-instruct-v1:0
+BEDROCK_REGION=us-east-1
+OPENSEARCH_ENDPOINT=https://<collection-id>.us-east-1.aoss.amazonaws.com
+DYNAMODB_TABLE_METADATA=docintel-metadata
+DYNAMODB_TABLE_SESSIONS=docintel-sessions
+REDIS_URL=redis://your-elasticache-endpoint:6379/0
+AWS_REGION=us-east-1
+```
+
+### Local mode (laptop dev, no AWS bill)
+
+| Layer | Provider |
+|---|---|
+| LLM | Google Gemini 2.5 Flash via `langchain-google-genai` |
+| Embeddings | Gemini `text-embedding-004` (768-dim), or `sentence-transformers/all-MiniLM-L6-v2` (384-dim, fully offline) |
+| Vector store | ChromaDB (persistent client, per-tenant directory) |
+| Metadata store | MongoDB (Atlas free tier or local Docker) |
+| Cache | In-memory `cachetools.TTLCache` |
+| Ingestion | Synchronous, in-process (no S3 / SQS / Step Functions) |
+| Secrets | `.env` file |
+| Observability | `structlog` JSON to stdout |
+
+```env
+LLM_BACKEND=gemini
+EMBEDDINGS_BACKEND=gemini
+VECTOR_BACKEND=chroma
+METADATA_BACKEND=mongo
+CACHE_BACKEND=memory
+
+GEMINI_API_KEY=your_key
+MONGO_URI=mongodb://localhost:27017
+```
+
+### Mix and match
+
+Every provider is independent. You can, for example, run **Local LLM + Prod vector store** to iterate on the graph while querying a real OpenSearch index (`LLM_BACKEND=gemini, VECTOR_BACKEND=opensearch`), or **Prod LLM + Local vector store** to test Bedrock prompting against a small local Chroma index (`LLM_BACKEND=bedrock, VECTOR_BACKEND=chroma`).
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -96,17 +162,7 @@ Store   Store    (Jira, ServiceNow, Slack,
                  email, http_webhook, audit_log)
 ```
 
-### Provider matrix (all pluggable at env-var level)
-
-| Layer | Local default | AWS production | Others supported |
-|---|---|---|---|
-| LLM | Gemini 2.5 Flash | Bedrock LLaMA 3 | — |
-| Embeddings | Gemini `text-embedding-004` (768) | Titan (1536) | `sentence-transformers/all-MiniLM-L6-v2` (384) |
-| Vector store | ChromaDB (local persistent) | OpenSearch Serverless | PostgreSQL + pgvector |
-| Metadata store | MongoDB | DynamoDB | — |
-| Cache | in-memory TTL | Redis | — |
-
-### Compute and eventing (AWS mode)
+### Compute and eventing (Prod mode)
 
 ```
 Document Upload  ->  S3 Bucket (KMS-encrypted, versioned)
@@ -136,7 +192,7 @@ LangGraph orchestrates a directed graph of specialized agents. Each agent has a 
 |---|---|---|
 | **Query Router** | Classifies the user query as `qa` (factual grounded answer), `action` (external side effect requested), or `unclear` (short-circuit). | `src/agents/router.py` |
 | **Retrieval Agent** | Hybrid semantic + keyword search with metadata filtering and access-scope enforcement, returns Top-K 3-5 chunks with citations. | `src/agents/retrieval_agent.py` |
-| **Reasoning Agent (ReAct)** | LangGraph `create_react_agent` loop with `rag_search`, `cite_source`, and `calculator` tools; can also invoke `ask_user` via WebSocket for clarification. | `src/agents/reasoning.py` |
+| **Reasoning Agent (ReAct)** | LangGraph `create_react_agent` loop with `rag_search`, `cite_source`, and `calculator` tools; can also invoke `ask_user` via WebSocket for clarification. Works with either Gemini or Bedrock LLM via a unified LangChain adapter. | `src/agents/reasoning.py` |
 | **Evaluator** | Two-part score (35 pts keyword coverage + 65 pts LLM rubric) against a 90 / 100 quality gate. Re-runs the Reasoning Agent up to three rounds if the gate is not met. | `src/agents/evaluator.py` |
 | **Validation Agent** | Enumerates every atomic claim in the draft answer and marks each SUPPORTED or UNSUPPORTED against the retrieved chunks. Up to two rounds; on failure, re-runs Reasoning. | `src/agents/validation.py` |
 | **Action Agent** | When the query implies a side effect, invokes the appropriate tool (Jira, ServiceNow, Slack, email, HTTP webhook) with structured Pydantic arguments and writes an audit-log entry. | `src/agents/action.py` |
@@ -158,8 +214,8 @@ Document Upload  ->  Parse  ->  Chunk  ->  Embed  ->  Store
 
 Two ingestion modes:
 
-1. **Synchronous** (`POST /api/upload/file` or `POST /api/upload/url`) parses, chunks, embeds, and indexes in the request. Good for local dev and small documents.
-2. **Asynchronous** (S3 to SQS to Step Functions to Lambda) recommended for production. `aws s3 cp file.pdf s3://<bucket>/uploads/<tenant>/file.pdf` triggers the ingestion Lambda (`src/ingestion/s3_worker.py`), which parses, chunks, embeds, and indexes idempotently. Failures land in the DLQ after five retries.
+1. **Synchronous** (`POST /api/upload/file` or `POST /api/upload/url`) parses, chunks, embeds, and indexes in the request. Default in Local mode. Also works in Prod mode for one-off uploads. Accepts free-form business metadata via a `metadata` form field (JSON), e.g. `{"product":"payments","version":"v2.3.1","severity":"high","access_scope":"engineering"}`, which is stamped onto every chunk.
+2. **Asynchronous** (S3 to SQS to Step Functions to Lambda). Prod mode default. `aws s3 cp file.pdf s3://<bucket>/uploads/<tenant>/file.pdf` triggers the ingestion Lambda (`src/ingestion/s3_worker.py`), which parses, chunks, embeds, and indexes idempotently. Failures land in the DLQ after five retries.
 
 ### Parsers (`src/ingestion/parser.py`)
 - **PDF** pypdf per-page, with lightweight section detection for numbered / uppercase headings and page-number metadata.
@@ -173,7 +229,7 @@ Two ingestion modes:
 
 **Section-aware chunking** for docs and knowledge articles:
 - Chunk size 500 tokens, overlap 50 tokens (configurable via `.env`).
-- Per-chunk metadata: `source_id, source_filename, source_type, section, chunk_index, page_number, access_scope`.
+- Per-chunk metadata: `source_id, source_filename, source_type, section, chunk_index, page_number, access_scope`, plus any business metadata passed at upload.
 
 **Event-based chunking** for logs:
 - Parse each line into `(timestamp, level, trace_id, text)`.
@@ -190,6 +246,11 @@ Two ingestion modes:
   "section": "Retry Failure Handling",
   "chunk_index": 8,
   "page_number": 12,
+  "product": "payments",
+  "service": "payment-api",
+  "environment": "production",
+  "version": "v2.3.1",
+  "severity": "high",
   "access_scope": "engineering"
 }
 ```
@@ -208,7 +269,7 @@ Query  ->  Tokenize  ->  Keyword Top-3K
 Filters (svc, env, scope) -+
 ```
 
-Implementation: `src/retrieval/hybrid.py`. Reranker: `cross-encoder/ms-marco-MiniLM-L-6-v2` via `sentence-transformers` (`src/retrieval/reranker.py`). Cache: `src/retrieval/cache.py` (in-memory TTL or Redis, 4 layers: embedding / retrieval / answer / metadata).
+Implementation: `src/retrieval/hybrid.py`. Reranker: `cross-encoder/ms-marco-MiniLM-L-6-v2` via `sentence-transformers` (`src/retrieval/reranker.py`). Cache: `src/retrieval/cache.py` (Redis in Prod, in-memory TTL in Local; 4 layers: embedding / retrieval / answer / metadata).
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -249,6 +310,8 @@ Multi-layer caching (`src/retrieval/cache.py`) reduces tail latency:
 
 Every request logs (via `structlog` JSON in `src/observability/logger.py`): user tenant, query, retrieved chunk IDs, per-round scores, prompt version, model response, latency (retrieval, generation, validation), token usage, tool-call success rate, and error info with `trace_id`. Surfaced via CloudWatch metric emissions (`src/observability/metrics.py`) with the `MetricsEmitter.emit()` and `timed()` context manager.
 
+SSE events include a human-readable `label` field so the frontend can show a live pipeline (`Routing query as qa...`, `Searching documents... found 5 relevant chunks`, `Reasoning complete (7 steps)`, `Evaluation round 1: 92/100 (passed gate)`, `Validating claims... 6 supported, 0 unsupported (grounded)`, `Actions completed (2 tool calls, audit log written)`).
+
 Retrieval evaluation is tracked separately from generation evaluation:
 - **Retrieval** precision, Top-K hit rate, empty-result rate, cache hit rate.
 - **Generation** answer score (0-100), factuality pass / fail, per-round retries, latency, token usage.
@@ -258,7 +321,7 @@ Retrieval evaluation is tracked separately from generation evaluation:
 ## Security and Multi-Tenancy
 
 - **Document-level access control** every chunk carries an `access_scope` metadata field; the Retrieval Agent injects the caller's granted scopes into the filter so out-of-scope hits are never returned by the vector store (`src/security/access_scope.py`).
-- **Per-user vector-store isolation** ChromaDB uses a per-tenant directory; OpenSearch / pgvector use a per-tenant index / table.
+- **Per-tenant vector-store isolation** ChromaDB uses a per-tenant directory; OpenSearch / pgvector use a per-tenant index / table.
 - **KMS encryption at rest** for S3, DynamoDB, OpenSearch, and Secrets Manager entries (provisioned by `infra/terraform/kms.tf`).
 - **Secrets Manager** for API keys and connection strings, with a lookup layer (`src/security/secrets.py`) that falls back to env vars for local dev.
 - **JWT + bcrypt** authentication (`src/auth/`).
@@ -270,17 +333,18 @@ Retrieval evaluation is tracked separately from generation evaluation:
 ## Tech Stack
 
 ### AI / ML
-- **LLM** Google Gemini 2.5 Flash via `langchain-google-genai` (default), AWS Bedrock LLaMA 3 via `boto3` (production alternative).
-- **Embeddings** Gemini `text-embedding-004` (768-dim), AWS Titan `amazon.titan-embed-text-v1` (1536-dim), or `sentence-transformers/all-MiniLM-L6-v2` (384-dim, fully local).
+- **LLM** AWS Bedrock LLaMA 3 via `langchain-aws` (Prod default), Google Gemini 2.5 Flash via `langchain-google-genai` (Local default).
+- **Embeddings** AWS Titan `amazon.titan-embed-text-v1` (Prod), Gemini `text-embedding-004` (Local), `sentence-transformers/all-MiniLM-L6-v2` (fully offline).
 - **Frameworks** LangChain 0.3+, LangGraph 0.2+ (`create_react_agent`, `StateGraph`), Pydantic 2, `structlog`.
 - **Retrieval** hybrid semantic + keyword + metadata + cross-encoder rerank via `sentence-transformers` and `rank-bm25`.
 
-### Cloud and Infrastructure (AWS mode)
-- **Compute** AWS Lambda (ingestion worker), Cloud Run / EC2 / Fargate for the FastAPI backend (choose whatever suits your latency budget).
+### Cloud and Infrastructure (Prod mode)
+- **Compute** AWS Lambda (ingestion worker), Cloud Run / EC2 / Fargate for the FastAPI backend.
 - **API** FastAPI directly, or API Gateway v2 HTTP API fronting Lambda via `mangum`.
-- **Storage** S3 (raw uploads), DynamoDB (metadata + conversation state) or MongoDB.
+- **Storage** S3 (raw uploads), DynamoDB (metadata + conversation state).
 - **Async** SQS + DLQ (ingestion event queue), Step Functions (multi-step ingestion orchestration).
-- **Vector DB** OpenSearch Serverless (`aoss:APIAccessAll`), or PostgreSQL + pgvector, or ChromaDB.
+- **Vector DB** OpenSearch Serverless (`aoss:APIAccessAll`).
+- **Cache** Redis (ElastiCache or self-hosted).
 - **Observability** CloudWatch logs and metrics, structured JSON logs, trace IDs, request IDs.
 - **IaC** Terraform (`infra/terraform/`), one file per AWS resource type.
 - **Security** IAM, KMS, Secrets Manager.
@@ -303,16 +367,11 @@ Retrieval evaluation is tracked separately from generation evaluation:
 
 - Python 3.11+
 - Node 20+
-- A running MongoDB instance (local Docker or Atlas free tier)
-- One of:
-  - A Google Gemini API key (fastest way to get started, get one at https://aistudio.google.com/apikey)
-  - An AWS account with Bedrock access to LLaMA 3 and Titan Embeddings and a provisioned OpenSearch Serverless collection
+- Either:
+  - **For Local mode**: a Google Gemini API key (https://aistudio.google.com/apikey) and a MongoDB instance (local Docker or Atlas free tier).
+  - **For Prod mode**: an AWS account with Bedrock access to `meta.llama3-70b-instruct-v1:0` and `amazon.titan-embed-text-v1`, and Terraform 1.5+ to provision the rest.
 
-Optional:
-- Docker + Terraform 1.5+ if you want to deploy to AWS.
-- Redis (for the multi-layer cache in production; local dev uses an in-memory TTL cache).
-
-### Backend, local dev with Gemini + ChromaDB + MongoDB
+### Local mode quick start (fastest path to a working demo)
 
 ```bash
 git clone https://github.com/chandankeelara/agentic-rag-document-platform.git
@@ -326,31 +385,31 @@ source venv/bin/activate
 
 pip install -r requirements.txt
 cp .env.example .env
-# open .env and set at minimum:
+
+# In .env, override the Prod defaults with Local mode:
+#   LLM_BACKEND=gemini
+#   EMBEDDINGS_BACKEND=gemini
+#   VECTOR_BACKEND=chroma
+#   METADATA_BACKEND=mongo
+#   CACHE_BACKEND=memory
 #   GEMINI_API_KEY=your_key
 #   MONGO_URI=mongodb://localhost:27017
 #   JWT_SECRET=$(python -c "import secrets; print(secrets.token_urlsafe(32))")
-# leave LLM_BACKEND=gemini, VECTOR_BACKEND=chroma, METADATA_BACKEND=mongo
 
 uvicorn main:app --reload
-# API:    http://localhost:8000
-# Docs:   http://localhost:8000/docs
-# Health: http://localhost:8000/api/admin/health/deep
 ```
 
-### Frontend
+Frontend:
 
 ```bash
 cd ../frontend
 npm install
 echo "NEXT_PUBLIC_API_URL=http://localhost:8000" > .env.local
 npm run dev
-# Open http://localhost:3000
+# http://localhost:3000
 ```
 
-### Ingest a document
-
-Register at `/register`, sign in, then upload from `/upload`, or from the CLI:
+Ingest a sample and query it:
 
 ```bash
 TOKEN=$(curl -s -X POST http://localhost:8000/api/auth/login \
@@ -359,6 +418,7 @@ TOKEN=$(curl -s -X POST http://localhost:8000/api/auth/login \
 
 curl -H "Authorization: Bearer $TOKEN" \
   -F "file=@samples/cuda-oom-runbook.md" \
+  -F 'metadata={"product":"gpu-infra","severity":"high","access_scope":"engineering"}' \
   http://localhost:8000/api/upload/file
 
 curl -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
@@ -366,14 +426,23 @@ curl -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   http://localhost:8000/api/query
 ```
 
-Try the SSE and WebSocket agent modes side-by-side at `/query` in the frontend.
+### Prod mode quick start (AWS-native)
 
-### AWS production mode
-
-Switch the backend to AWS providers:
+**1. Provision AWS infra with Terraform.**
 
 ```bash
-# in backend/.env
+cd infra/terraform
+terraform init
+terraform apply -var="project=docintel" -var="region=us-east-1"
+# outputs: ingest_bucket, opensearch_endpoint, metadata_table,
+# sessions_table, sfn_state_machine_arn, query_api_endpoint, kms_key_arn
+```
+
+**2. Populate Secrets Manager** with `docintel/jwt-secret`, `docintel/bedrock-model-id`, and (optional) `docintel/jira-api-token`, `docintel/servicenow-password`, `docintel/slack-webhook-url`, `docintel/smtp-password`.
+
+**3. Backend `.env`** (Prod defaults, so `cp .env.example .env` gets you 90% of the way):
+
+```env
 LLM_BACKEND=bedrock
 EMBEDDINGS_BACKEND=titan
 VECTOR_BACKEND=opensearch
@@ -382,30 +451,20 @@ CACHE_BACKEND=redis
 
 BEDROCK_MODEL_ID=meta.llama3-70b-instruct-v1:0
 BEDROCK_REGION=us-east-1
-OPENSEARCH_ENDPOINT=https://<collection-id>.us-east-1.aoss.amazonaws.com
+OPENSEARCH_ENDPOINT=<terraform output opensearch_endpoint>
 DYNAMODB_TABLE_METADATA=docintel-metadata
 DYNAMODB_TABLE_SESSIONS=docintel-sessions
+REDIS_URL=redis://<your-elasticache>:6379/0
 AWS_REGION=us-east-1
 ```
 
-Provision the AWS infrastructure via Terraform:
-
-```bash
-cd infra/terraform
-terraform init
-terraform plan -var="project=docintel" -var="region=us-east-1"
-terraform apply
-```
-
-Outputs include the ingest S3 bucket, OpenSearch endpoint, DynamoDB tables, Step Functions ARN, and API Gateway endpoint.
-
-Upload for async ingestion:
+**4. Upload documents via S3** (fans out through SQS + Step Functions + Lambda):
 
 ```bash
 aws s3 cp samples/cuda-oom-runbook.md s3://docintel-ingest-<account>/uploads/<tenant>/cuda-oom-runbook.md
 ```
 
-The S3 event fans out through SQS + Step Functions + the Lambda worker; results land in DynamoDB and OpenSearch.
+**5. Deploy the FastAPI backend** to Cloud Run, Fargate, or EC2 with the `.env` above and appropriate IAM. The frontend can be built and served from any static host (S3 + CloudFront, Vercel, or Cloud Run).
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -427,10 +486,10 @@ agentic-rag-document-platform/
 |   +-- src/
 |   |   +-- config.py                    pydantic-settings, single source of truth for env
 |   |   +-- session.py                   Agent session registry (60s question / 5min lifecycle)
-|   |   +-- llm/                         LLM providers (Gemini, Bedrock)
-|   |   +-- embeddings/                  Embedding providers (Gemini, Titan, sentence-transformers)
-|   |   +-- vector_store/                Vector stores (Chroma, OpenSearch, pgvector)
-|   |   +-- metadata_store/              Metadata stores (Mongo, DynamoDB)
+|   |   +-- llm/                         LLM providers (Bedrock, Gemini)
+|   |   +-- embeddings/                  Embedding providers (Titan, Gemini, sentence-transformers)
+|   |   +-- vector_store/                Vector stores (OpenSearch, Chroma, pgvector)
+|   |   +-- metadata_store/              Metadata stores (DynamoDB, Mongo)
 |   |   +-- ingestion/
 |   |   |   +-- parser.py                PDF / DOCX / HTML / MD / TXT / logs
 |   |   |   +-- chunker.py               Section-aware + event-based
@@ -495,12 +554,13 @@ agentic-rag-document-platform/
 
 ### Shipped
 - [x] LangGraph five-agent orchestrator (Router, Retrieval, Reasoning, Evaluator, Validation, Action)
-- [x] Google Gemini 2.5 Flash generation with strict grounding prompts
-- [x] AWS Bedrock LLaMA 3 provider (env-var swap)
-- [x] Gemini + Titan + sentence-transformers embedding providers
+- [x] AWS Bedrock LLaMA 3 via `langchain-aws` (Prod default, first-class ReAct tool-use)
+- [x] Google Gemini 2.5 Flash (Local default)
+- [x] AWS Titan + Gemini + sentence-transformers embedding providers
 - [x] Hybrid retrieval (vector + keyword + RRF + cross-encoder rerank) across ChromaDB, OpenSearch, and pgvector
 - [x] Section-aware chunking for docs, event-based chunking for log streams
 - [x] PDF / DOCX / HTML / Markdown / plain-text parsers
+- [x] Free-form business metadata (product / version / severity / etc.) at upload time, stamped onto every chunk
 - [x] Tool-calling: Jira, ServiceNow, Slack, email, HTTPS webhook, audit log
 - [x] Evaluator with 90/100 gate and 3-round retry
 - [x] Validation Agent with per-claim faithfulness check and 2-round retry
@@ -509,10 +569,10 @@ agentic-rag-document-platform/
 - [x] `structlog` JSON logs with trace IDs; CloudWatch metric emitter
 - [x] Multi-tenant per-chunk `access_scope` enforcement + KMS + Secrets Manager + IAM
 - [x] Terraform for the full AWS ingestion pipeline
-- [x] SSE pipeline streaming + WebSocket bidirectional agent Q&A with `ask_user`
+- [x] SSE pipeline streaming with human-readable labels + WebSocket bidirectional agent Q&A with `ask_user`
 
 ### In Progress
-- [ ] `langchain_aws.ChatBedrock` adapter so Bedrock is a first-class ReAct tool-using citizen
+- [ ] LangGraph checkpointer (DynamoDB in Prod / Mongo in Local) for multi-turn conversation memory
 - [ ] Streaming responses end-to-end (LLM token stream to API to client)
 - [ ] Eval harness with retrieval and generation metric dashboards
 
