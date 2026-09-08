@@ -1,93 +1,93 @@
-"""
-FastAPI Server - LMARO API
-"""
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+"""Document Intelligence Platform - FastAPI entrypoint."""
+from __future__ import annotations
+
 import sys
+from contextlib import asynccontextmanager
 from pathlib import Path
 
-# Add backend to path
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
 sys.path.insert(0, str(Path(__file__).parent))
 
-from api.routes import router
-from api.auth_routes import router as auth_router
-from api.profile_routes import router as profile_router
-from api.profile_builder_routes import router as profile_builder_router
-from api.rag_routes import router as rag_router
+from src.config import get_settings
+from src.observability.logger import get_logger
+from src.session import registry as session_registry
+
+log = get_logger("main")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    settings = get_settings()
+    app.state.settings = settings
+    log.info(
+        "app.starting",
+        vector=settings.vector_backend,
+        llm=settings.llm_backend,
+        embeddings=settings.embeddings_backend,
+        metadata=settings.metadata_backend,
+    )
+    try:
+        if settings.metadata_backend == "mongo":
+            from src.metadata_store.mongo import MongoMetadataStore
+
+            await MongoMetadataStore().ensure_indexes()
+    except Exception as e:
+        log.warning("app.index_init_failed", error=str(e))
+    session_registry.start()
+    yield
+    log.info("app.stopping")
+
 
 app = FastAPI(
-    title="LMARO API",
-    description="LLM Multi-Agent Resume Optimizer with RAG",
-    version="0.3.0"
+    title="Document Intelligence Platform API",
+    description="Agentic RAG platform for enterprise document Q&A with multi-agent orchestration and action tools.",
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
-# CORS
+_settings = get_settings()
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[_settings.frontend_origin, "*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Include routes
-app.include_router(auth_router)  # Auth routes at /api/auth/*
-app.include_router(profile_router)  # Profile routes at /api/profile/*
-app.include_router(profile_builder_router)  # Profile builder at /api/profile/builder/*
-app.include_router(rag_router)  # RAG routes at /api/rag/*
-app.include_router(router)  # Other routes at /api/*
-
 
 @app.get("/")
 async def root():
-    """Root endpoint"""
     return {
-        "message": "LMARO API - Multi-Agent Resume Optimizer",
-        "version": "0.3.0",
+        "service": "Document Intelligence Platform",
+        "version": app.version,
         "docs": "/docs",
-        "features": [
-            "User Authentication (MongoDB)",
-            "Profile Completion Tracking (LLM-powered)",
-            "Multi-Agent Resume Generation",
-            "RAG with ChromaDB (User-Isolated)",
-            "Real-time SSE Progress Tracking",
-            "Autonomous Profile Builder (ReAct Agent)",
-            "🆕 GitHub Repository Ingestion & Semantic Search"
-        ]
+        "health": "/health",
     }
 
 
 @app.get("/health")
-async def health_check():
-    """Health check endpoint"""
-    try:
-        from src.auth.database import mongodb
-        # Test MongoDB connection
-        mongodb.db.command('ping')
-        mongo_status = "connected"
-    except:
-        mongo_status = "disconnected"
-    
-    return {
-        "status": "healthy",
-        "mongodb": mongo_status,
-        "version": "0.3.0"
-    }
+async def health():
+    return {"status": "ok", "version": app.version}
+
+
+# Route registration
+from api.auth_routes import router as auth_router
+from api.upload_routes import router as upload_router
+from api.query_routes import router as query_router
+from api.agent_ws_routes import router as agent_ws_router
+from api.admin_routes import router as admin_router
+
+app.include_router(auth_router)
+app.include_router(upload_router)
+app.include_router(query_router)
+app.include_router(agent_ws_router)
+app.include_router(admin_router)
 
 
 if __name__ == "__main__":
     import uvicorn
-    print("\n" + "="*60)
-    print("🚀 Starting LMARO API Server")
-    print("="*60)
-    print("📍 Server: http://localhost:8000")
-    print("📚 API Docs: http://localhost:8000/docs")
-    print("💚 Health Check: http://localhost:8000/health")
-    print("="*60 + "\n")
-    
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True
-    )
+
+    uvicorn.run("main:app", host=_settings.host, port=_settings.port, reload=True)
